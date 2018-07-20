@@ -73,7 +73,7 @@ def fitness3(solution):
                 neg.add(scores_neg[i][k])
     # Il numero di elementi dei set mi dici quanto sono state impattate le proteine
     # dunque quanto sono distribuiti gli 1 li in mezzo.
-    B1 = 1.0
+    B1 = 10.0
     B2 = (1.0 / float(len(mirna_data[0]) - up_reg_cnt)) * up_reg_cnt
     final_score = ((B1 * math.fabs(len(pos) - up_reg_cnt)) + (B2 * (len(neg)))) * math.pow(sum(solution), 1)
     return final_score
