@@ -136,7 +136,10 @@ class GeneticAlgorithm:
         for i in range(self.pop_len):
             sol = []
             for j in range(self.sol_len):
-                sol.append(randint(self.min_val_gene, self.max_val_gene))
+                if random() <= 0.1:
+                    sol.append(1)
+                else:
+                    sol.append(0)
             self.population.append(sol)
 
 
