@@ -10,7 +10,6 @@ import numpy
 
 
 
-
 # Comparazione della fitness
 def fitness_cmp_max(val_1, val_2):
     return 1 if val_1 > val_2 else 0
@@ -41,6 +40,11 @@ def compute_scores2(mirna_data, up_c):
     return scores_pos, scores_neg
 
 
+# Funzione/i Obiettivo
+def fitness1(solution):
+    return sum(solution)
+
+
 def fitness2(solution):
     pos = 0.0
     neg = 0.0
@@ -55,6 +59,23 @@ def fitness2(solution):
             utl += float(scores[i][0]) / (float(scores[i][1]) + 1)
     mirnas = sum(solution)
     final_score = (float(math.pow(pos, gamma))) / (float(math.pow(mirnas, eps)) * float(math.pow(neg, psi)))
+    return final_score
+
+
+def fitness3(solution):
+    pos = set() # np_regulated impattate
+    neg = set() # normali impattate
+    for i in range(len(solution)):
+        if solution[i] == 1:
+            for j in range(len(scores_pos[i])):
+                pos.add(scores_pos[i][j])
+            for k in range(len(scores_neg[i])):
+                neg.add(scores_neg[i][k])
+    # Il numero di elementi dei set mi dici quanto sono state impattate le proteine
+    # dunque quanto sono distribuiti gli 1 li in mezzo.
+    B1 = 1.0
+    B2 = (1.0 / float(len(mirna_data[0]) - up_reg_cnt)) * up_reg_cnt
+    final_score = ((B1 * math.fabs(len(pos) - up_reg_cnt)) + (B2 * (len(neg)))) * math.pow(sum(solution), 1)
     return final_score
 
 
@@ -92,8 +113,10 @@ def data_read():
     return dataset, mirna_id, mirna_data, up_reg_cnt
 
 
-def save_solution(solution):
-    file = open("results/metodo_mio/solutions.csv", "a")
+def save_solution(solution, filepath):
+    # results/metodo_mio/solutions.csv
+    # results/metodo_prof/solutions.csv
+    file = open(filepath, "a")
     string = ""
     for bit in solution:
         string += str(bit)
@@ -102,8 +125,10 @@ def save_solution(solution):
 
 
 # Calcola la fequenza di utilizzo dei mirna nelle soluzioni trovate
-def compute_mirna_frequency():
-    with open("results/metodo_mio/solutions.csv", "r") as file:
+def compute_mirna_frequency(filepath):
+    # results/metodo_mio/solutions.csv
+    # results/metodo_mio/solutions.csv
+    with open(filepath, "r") as file:
         lines = file.readlines()
         sols = []
         for line in lines:
@@ -125,10 +150,12 @@ def get_bst_wst(n, frq):
 
 
 # Carica i dati dei miei run
-def load_run_data():
+def load_run_data(path):
+    # results/metodo_mio/runs/
+    # results/metodo_prof/runs/
     all_dataset = []
     for i in range(100):
-        with open("results/metodo_mio/runs/run_"+str(i)+".csv") as file:
+        with open(path + "run_"+str(i) + ".csv") as file:
             csvreader = csv.reader(file, delimiter=';', quotechar='|')
             dataset = []
             for row in csvreader:
@@ -168,7 +195,7 @@ def plot_mirna(frq, bst, wst):
     lab = [mirna_id[bst[i]] for i in range(len(bst))] + [mirna_id[wst[i]] for i in range(len(wst))]
     wgt = [float(frq[bst[i]])/float(sum(frq)) for i in range(len(bst))] + [float(frq[wst[i]])/float(sum(frq)) for i in range(len(wst))]
     all = list(bst) + list(wst)
-    fig, axs = plt.subplots(4, 1, figsize=(16, 9), sharey=False)
+    fig, axs = plt.subplots(4, 1, figsize=(16, 9), shared=False)
     # istogramma delle frequenze
     axs[0].set_ylabel("frequency")
     axs[0].bar(lab, wgt)
@@ -229,25 +256,24 @@ if __name__ == "__main__":
     scores_pos, scores_neg = compute_scores2(mirna_data, up_reg_cnt)
 
     # effettuo analisi sui mirna, e sulla loro frequenza
-    # di prelevamento in vase alla performance
-    #'''
-    frq = compute_mirna_frequency()
+    # di prelevamento in base alla performance
+    '''
+    frq = compute_mirna_frequency("results/metodo_mio/solutions.csv")
     bst, wst = get_bst_wst(10, frq)
     plot_mirna(frq, bst, wst)
-    #'''
+    '''
 
     # Normalizzo i dataset e ne ottendo un'unico normalizzato
-    #'''
-    all_dataset_norm = load_run_data()
+    '''
+    all_dataset_norm = load_run_data("results/metodo_mio/runs/")
     plot_avg_ag_perf(all_dataset_norm)
-    #'''
+    '''
 
     # esecuzione dell'algoritmo genetico, su un numero elevato di run
-    '''
     for i in range(100):
-        GA = GeneticAlgorithm(fitness2, fitness_cmp_max, 0, 1, 100, len(mirna_data), cpu_num=2)
+        sol_len = len(mirna_data)
+        GA = GeneticAlgorithm(fitness3, fitness_cmp_min, 0, 1, 100, sol_len)
         GA.set_params(mirna_data, up_reg_cnt)
-        sol = GA.run(gen=1500, pc=0.8, pm=1/len(mirna_data), debug=True)
+        sol = GA.run(gen=20000, pc=0.8, pm=2.0/sol_len, debug=True)
         GA.save_data(i, "results/metodo_mio/runs/")
-        save_solution(sol)
-    '''
+        save_solution(sol,"results/metodo_mio/solutions.csv")
